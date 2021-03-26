@@ -4,6 +4,16 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
 import scipy.optimize as opt
+import time
+
+#matrix helper functions
+def add(M,N):
+    rowsize = len(M[0])
+    return [[M[i][j] + N[i][j] for j in range(rowsize)] for i in range(len(M))]
+
+def transpose(M):
+    return [list(row) for row in zip(*M)]
+
 
 #helper functions
 def xlx(x):
@@ -20,45 +30,52 @@ def X(z):
     y=Y(z)
     return [y[0]+y[1], y[1]+y[2]]
 
+def normalize(ytil):
+    total = 0
+    for yi in ytil:
+        total += yi
+        
+    return [yi/(2*total) for yi in ytil]
+
 #Thermodynamic functions
-def H(J,h,z):
-    x = X(z)
-    y = Y(z)
-    #return -4*J*y[1]-h*x[1]
-    return -2*J*(2*y[1]-y[0]-y[2])-h*(x[0]-x[1])
-
-def S(z):
-    #coefficients for multiplicity
-    a=[1,1]         #x +    -
-    b=[1,2,1]       #y ++   +-   --
-    c=[1,4,4,2,4,1] #z ++++ +++- ++-- +-+- +--- ----
-    
-    Sx, Sy, Sz = 0,0,0
-
-    for i in range(len(z)):
-        if z[i]<0: return -100
-        Sz-=c[i]*xlx(z[i])
-
-    y = Y(z)
-
-    for i in range(len(y)):
-        if y[i]<0: return -100
-        Sy-=b[i]*xlx(y[i])
-
-    x = X(z)
-
-    for i in range(len(x)):
-        if x[i]<0: return -100
-        Sx-=a[i]*xlx(x[i])
-    
-    return Sx-2*Sy+Sz  #square
-    
 def F(J,h,z,T):
-    if T == 0: return H(J,h,z) #might as well skip entropy calc if possible
-    return H(J,h,z)-T*S(z)
 
+    # Calculate X(z) and Y(z) off the bat
+    x = X(z)
+    y = Y(z)
+
+    def H():
+        #return -4*J*y[1]-h*x[1]
+        return -2*J*(2*y[1]-y[0]-y[2])-h*(x[0]-x[1])
+
+    def S():
+        #coefficients for multiplicity
+        a=[1,1]         #x +    -
+        b=[1,2,1]       #y ++   +-   --
+        c=[1,4,4,2,4,1] #z ++++ +++- ++-- +-+- +--- ----
+        
+        Sx, Sy, Sz = 0,0,0
+
+        for i in range(len(z)):
+            if z[i]<0: return -100
+            Sz-=c[i]*xlx(z[i])
+
+        for i in range(len(y)):
+            if y[i]<0: return -100
+            Sy-=b[i]*xlx(y[i])
+
+        for i in range(len(x)):
+            if x[i]<0: return -100
+            Sx-=a[i]*xlx(x[i])
+        
+        return Sx-2*Sy+Sz  #square
+    
+    if T == 0: return H() #might as well skip entropy calc if possible
+    return H()-T*S()
 #minimization
-def min(J=-1, hpj=0, samp=249, Trang=[0,5]):
+def min(J=-1, hpj=0, samp=249, Trang=[0,5], debug=False):
+    runtimestart = time.time()
+
     h = hpj*abs(J)
     delta = (Trang[1]-Trang[0])/(samp)
     Temp = np.linspace(Trang[0]+delta,Trang[1],samp-1)
@@ -80,8 +97,9 @@ def min(J=-1, hpj=0, samp=249, Trang=[0,5]):
     mF, mX, mY, E, C = [],[],[],[],[] 
 
     for i in range(len(Temp)):
-        status="Calculating T/J="+str(Temp[i])
-        print(status)
+        if debug:
+            status="Calculating T/J="+str(Temp[i])
+            print(status)
 
         free = lambda z: F(J, h, z, Temp[i]*abs(J))
         res = opt.minimize(free,                   #minimize free energy
@@ -100,13 +118,13 @@ def min(J=-1, hpj=0, samp=249, Trang=[0,5]):
         tempy=Y(res.x)
         mY.append(tempy[1])
         #guess = res.x          #update guess from previous result
-
-        if tempy[1]>0.5:
-            print(res)
-        else: print(" z: "+str(res.x))
-        print(" y: "+str(tempy))
-        print(" x: "+str(tempx))
-        print(' F: '+str(mF[i]))
+        if debug:
+            if tempy[1]>0.5:
+                print(res)
+            else: print(" z: "+str(res.x))
+            print(" y: "+str(tempy))
+            print(" x: "+str(tempx))
+            print(' F: '+str(mF[i]))
 
         if i>1:
             #calculate E
@@ -165,5 +183,9 @@ def min(J=-1, hpj=0, samp=249, Trang=[0,5]):
         for i in range(len(Temp)):
             outputwriter.writerow([Temp[i],mX[i]])
 
+    print("Runtime: " + str(time.time()-runtimestart))
     plt.show()
+    
+    
 
+min()

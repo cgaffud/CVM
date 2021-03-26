@@ -112,7 +112,12 @@ def ytilde(ycur, Eb, T, m):
             yres[i][j]*=((Xecur[i]*Xocur[j])**((z-1)/z))
             #apply lagrange multipliers
             for k in range(len(m)):
-                yres[i][j]*=math.exp(m[k]*c[k][i][j]/(z*T))
+                #TEMPORARY MEASURE
+                try:
+                    yres[i][j]*=math.exp(m[k]*c[k][i][j]/(z*T))
+                except:
+                    print("m["+str(k)+"]: "+str(m[k])+", c["+str(k)+"]["+str(i)+"]["+str(j)+"]: "+str(c[k][i][j])+", yres["+str(i)+"]["+str(j)+"]:"+str(yres[i][j])+", T: "+str(T)+", res: "+str(m[k]*c[k][i][j]/(z*T)))
+               
   
     return normalize(yres)
 
@@ -294,7 +299,7 @@ def tsearch(Eb, m, Trang, guess, prevY, xTarget, debug):
     y,m = search_y(y, Eb, Tavg, m, xTarget, MAX_ITER, debug)
     
     xdiff = abs(Xe(y)[0]-Xo(y)[0])
-
+    print("Y: " + str(y) + "M: " + str(m))
     if xdiff<=xA_TOL:
         return tsearch(Eb, m, [Trang[0], Tavg], guess, y, xTarget, debug)
     return tsearch(Eb, m, [Tavg, Trang[1]], guess, y, xTarget, debug)
@@ -407,7 +412,7 @@ def minimize_x(Eb=[[0,-1,-1],
             print('Calculating T='+str(temp[i]))
         T=temp[i]
 
-        m,y = search_y(y, Eb, T, mGuess, xTarget, MAX_ITER, debug)
+        y,m = search_y(y, Eb, T, mGuess, xTarget, MAX_ITER, debug)
         
         x=Xe(y)
         xAe.append(2*x[0])
@@ -517,7 +522,7 @@ def phase_x(Eb=[[0,-1,-1],
 
     #Iterate through chemical potentials
     for xA in xA_samp:
-        #temporary
+        #TEMPORARY MEASURE
         if True:
             print('Calculating mA='+str(xA))
         

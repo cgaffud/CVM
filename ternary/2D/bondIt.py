@@ -116,7 +116,8 @@ def ytilde(ycur, Eb, T, m):
                 try:
                     yres[i][j]*=math.exp(m[k]*c[k][i][j]/(z*T))
                 except:
-                    print("m["+str(k)+"]: "+str(m[k])+", c["+str(k)+"]["+str(i)+"]["+str(j)+"]: "+str(c[k][i][j])+", yres["+str(i)+"]["+str(j)+"]:"+str(yres[i][j])+", T: "+str(T)+", res: "+str(m[k]*c[k][i][j]/(z*T)))
+                    #This Error should only occur 
+                    print("Fixed composition too low for computation")
                
   
     return normalize(yres)
@@ -135,6 +136,7 @@ def search_y(y, Eb, T, m, xTarget, counter, debug=False):
     if (xTarget == None): 
         mixm = False 
 
+    counter += counter * mixm
     change = 1
     exited = False
     while change>Y_PRECISION:
@@ -299,7 +301,6 @@ def tsearch(Eb, m, Trang, guess, prevY, xTarget, debug):
     y,m = search_y(y, Eb, Tavg, m, xTarget, MAX_ITER, debug)
     
     xdiff = abs(Xe(y)[0]-Xo(y)[0])
-    print("Y: " + str(y) + "M: " + str(m))
     if xdiff<=xA_TOL:
         return tsearch(Eb, m, [Trang[0], Tavg], guess, y, xTarget, debug)
     return tsearch(Eb, m, [Tavg, Trang[1]], guess, y, xTarget, debug)
@@ -503,8 +504,8 @@ def phase_x(Eb=[[0,-1,-1],
             [-1,0,0]],
         xBCrel=[0.5,0.5],
         Trang=[0,5],
-        xArang=[0,1],
-        xnum=200,
+        xArang=[0.3,0.8],
+        xnum=50,
         guess=[[25,212.5,212.5],
                [12.5,12.5,0],
                [12.5,0,12.5]],
@@ -519,19 +520,22 @@ def phase_x(Eb=[[0,-1,-1],
     
     Tc=[]
     ys=[]
+    xs=[]
 
-    #Iterate through chemical potentials
+    xBC = xBCrel[0]+xBCrel[1]
+
+    #Iterate through compositions 
     for xA in xA_samp:
-        #TEMPORARY MEASURE
-        if True:
-            print('Calculating mA='+str(xA))
-        
-        xsum = xA + xBCrel[0] + xBCrel[1]
-        x=[xA/xsum, xBCrel[0]/xsum, xBCrel[1]/xsum]
+        #Fix xB and xC for our given xA so they correclty sum to 1
+        xBCnorm = 1-xA
+        x=[xA, xBCrel[0]/xBC *xBCnorm, xBCrel[1]/xBC *xBCnorm]
+        if debug:
+            print('Calculating xA='+str(xA))
 
         Tnew, ynew = tsearch(Eb, mGuess, Trang, guess, guess, x, debug)
         ys.append(ynew)
         Tc.append(Tnew)
+        xs.append(Xt(ynew)[0])
 
     #output to csv file
     with open('Tc_Comp_v_xA_xB'+str(math.floor(10*xBCrel[0]))+'_xC'+str(math.floor(10*xBCrel[1]))+'.csv', mode='w') as output:
@@ -547,7 +551,7 @@ def phase_x(Eb=[[0,-1,-1],
     gs = fig.add_gridspec(3,2)
 
     newplt = fig.add_subplot(gs[2,0])
-    newplt.plot(xA_samp, Tc)
+    newplt.plot(xs, Tc)
     newplt.set_xlabel('xA')
     newplt.set_ylabel('Transition Temperature')
 

@@ -583,4 +583,4 @@ def phase_x(Eb=[[0,-1,-1],
     print("Runtime: " + str(time.time()-startTime))
     plt.show()
 
-phase_x()
+minimize()

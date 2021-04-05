@@ -42,6 +42,23 @@ def transpose(M):
     return [list(row) for row in zip(*M)]
 
 #Note: Z is a four-dim matrix for square abdg (z_abdg)
+
+def U(z, i1, i2 ,i3):
+    '''Get u_i1i2i3 from z, where (i1,i2,i3) indicates vertices of triangle'''
+    if (i1 == i2) or (i1 == i3) or (i2 == i3):
+        raise IndexError
+    
+    dim = len(z)
+    u = [[[0 for _ in range(dim)] for _ in range(dim)] for _ in range(dim)]
+
+    for i in range(dim):
+        for j in range(dim):
+            for k in range(dim):
+                for l in range(dim):
+                    indices = [i,j,k,l]
+                    u[indices[i1]][indices[i2]][indices[i3]] += z[i][j][k][l]
+    return u
+
 def Y(z, i1, i2):
     '''Get y_i1i2 from z, where (i1,i2) indicates the bond expected'''
     if i1 == i2:
@@ -57,17 +74,20 @@ def Y(z, i1, i2):
             for k in range(dim):
                 for l in range(dim):
                     indices = [i,j,k,l]
-                    y[indices[i1]][indices[i2]] = z[i][j][k][l]
+                    y[indices[i1]][indices[i2]] += z[i][j][k][l]
     
     return y
 
 def X_i(ys):
     '''Gets component of X_i by summing up already-computed Y_ij, 
-       where i indicates point on square'''
+       where i indicates point on square.
+       Note that we require ys to be filled with Y_ij, not Y_ji'''
+    print("Ys: "+str(ys))
     dim = len(ys[0])
     x = []
+
     for i in range(dim):
-        x[i]=0
+        x.append(0)
         for j in range(dim):
             for k in range(3):
                 x[i] += ys[k][i][j]
@@ -86,29 +106,29 @@ def X(z,i):
     return X_i(ys)
 
 
-def F(z,Es):
-    '''E consists of [h,J,K,L]'''
+def F(z,Es,T):
+    '''E consists of (h,J,K,L)'''
     dim = len(z)
-
-    # Symmetric y matrix (so that xs can be simple) [includes nnnbs]
-    y_all = []
-    for i in range(dim):
-        for j in range(dim):
+    
+    # ys matrix (includes next-nearest neighbor bonds for H)
+    ys = [[None for _ in range(4)] for _ in range(4)]
+    for i in range(4):
+        for j in range(4):
             if (i<j):
-                y_all[i][j] = Y(z,i,j) 
+                ys[i][j] = Y(z,i,j) 
             elif (i>j):
-                y_all[i][j] = y_all[j][i]
-            else:
-                y_all[i][j] = None
+                #This is correct but is it needed
+                ys[i][j] = transpose(ys[j][i])
 
     # Nearest neighbor bonds
-    ys = [y_all[0][1],y_all[0][4],y_all[2][1],y_all[2][3]]
-    # Compositionals
-    xs = [X_i([y_all[i][(j % 4)] for j in range(3)]) for i in range(dim)]
+    y_nearest = [ys[0][1],ys[0][3],ys[2][1],ys[2][3]]
+    # Compositionals (Technically faster because don't have to recompute Ys)
+    xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
+    print(xs)
 
     #NEEDS TO BE WRITTEN
     def H():
-        pass
+        h,J,K,L = Es
 
     def S():
 
@@ -118,7 +138,7 @@ def F(z,Es):
             for xi in x:
                 Sxlx += xlx(xi)
         
-        for y in ys:
+        for y in y_nearest:
             for yi in y:
                 for yij in yi:
                     Syly += xlx(yij)
@@ -131,5 +151,7 @@ def F(z,Es):
 
         return -Sxlx/4+2*Syly/4-Szlz
 
-    
+    s = S()
+    return s
+
     

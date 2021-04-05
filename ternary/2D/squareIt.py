@@ -85,4 +85,51 @@ def X(z,i):
     
     return X_i(ys)
 
+
+def F(z,Es):
+    '''E consists of [h,J,K,L]'''
+    dim = len(z)
+
+    # Symmetric y matrix (so that xs can be simple) [includes nnnbs]
+    y_all = []
+    for i in range(dim):
+        for j in range(dim):
+            if (i<j):
+                y_all[i][j] = Y(z,i,j) 
+            elif (i>j):
+                y_all[i][j] = y_all[j][i]
+            else:
+                y_all[i][j] = None
+
+    # Nearest neighbor bonds
+    ys = [y_all[0][1],y_all[0][4],y_all[2][1],y_all[2][3]]
+    # Compositionals
+    xs = [X_i([y_all[i][(j % 4)] for j in range(3)]) for i in range(dim)]
+
+    #NEEDS TO BE WRITTEN
+    def H():
+        pass
+
+    def S():
+
+        Sxlx, Syly, Szlz = 0,0,0
+
+        for x in xs:
+            for xi in x:
+                Sxlx += xlx(xi)
+        
+        for y in ys:
+            for yi in y:
+                for yij in yi:
+                    Syly += xlx(yij)
+        
+        for zi in z:
+            for zij in zi:
+                for zijk in zij:
+                    for zijkl in zijk:
+                        Szlz += xlx(zijkl)
+
+        return -Sxlx/4+2*Syly/4-Szlz
+
+    
     

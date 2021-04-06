@@ -110,7 +110,7 @@ def F(z,Es,T):
     '''E consists of (h,J,K,L)'''
     dim = len(z)
     
-    # ys matrix (includes next-nearest neighbor bonds for H)
+    # ys matrix (done this way for x calculations)
     ys = [[None for _ in range(4)] for _ in range(4)]
     for i in range(4):
         for j in range(4):
@@ -122,16 +122,36 @@ def F(z,Es,T):
 
     # Nearest neighbor bonds
     y_nearest = [ys[0][1],ys[0][3],ys[2][1],ys[2][3]]
+    y_all = [ys[0][1],ys[0][2],ys[0][3],ys[1][3],ys[2][1],ys[2][3]]
     # Compositionals (Technically faster because don't have to recompute Ys)
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
     print(xs)
 
-    #NEEDS TO BE WRITTEN
     def H():
         h,J,K,L = Es
+        # will have multiplicity of 4
+        Hx, Hy, Hu, Hz = 0,0,0,0
+
+        for x in xs:
+            for i in range(dim):
+                Hx += x[i]*h[i]
+
+        for y in y_all:
+            for i in range(dim):
+                for j in range(dim):
+                    Hy -= y[i][j]*J[i][j]
+        
+        #Triangle calculation (Hu) needs to occur
+
+        for i in range(dim):
+            for j in range(dim):
+                for k in range(dim):
+                    for l in range(dim):
+                        Hz -= z[i][j][k][l]*L[i][j][k][l]
+
+        return Hx/4-Hy/6-Hu-Hz
 
     def S():
-
         Sxlx, Syly, Szlz = 0,0,0
 
         for x in xs:
@@ -151,7 +171,9 @@ def F(z,Es,T):
 
         return -Sxlx/4+2*Syly/4-Szlz
 
-    s = S()
-    return s
+    hamilton = H()
+    return hamilton
 
-    
+# Arbitrary Test Case
+#z = [ [ [[1,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ]
+#h = [0.5,0.5]

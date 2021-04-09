@@ -59,6 +59,22 @@ def U(z, i1, i2 ,i3):
                     u[indices[i1]][indices[i2]][indices[i3]] += z[i][j][k][l]
     return u
 
+def Y_ij(us):
+    '''Get y_ij from by summing up already-computed u_ijk,
+    where ij is the indicatesthe bond on the square.
+    Note that we require us to be filled as u_ij '''
+    dim = len(us[0])
+    
+    y =  [[0 for _ in range(dim)] for _ in range(dim)]
+
+    for l in range(3):
+        for i in range(dim):
+            for j in range(dim):
+                y[0].append(0)
+                for k in range(dim):
+                        y[i][j] += us[l][i][j][k]
+    return y
+
 def Y(z, i1, i2):
     '''Get y_i1i2 from z, where (i1,i2) indicates the bond expected'''
     if i1 == i2:
@@ -79,18 +95,17 @@ def Y(z, i1, i2):
     return y
 
 def X_i(ys):
-    '''Gets component of X_i by summing up already-computed Y_ij, 
+    '''Gets component of x_i by summing up already-computed y_ij, 
        where i indicates point on square.
-       Note that we require ys to be filled with Y_ij, not Y_ji'''
-    print("Ys: "+str(ys))
+       Note that we require ys to be filled with y_ij, not y_ji'''
+    #print("Ys: "+str(ys))
     dim = len(ys[0])
-    x = []
+    x = [0 for _ in range(dim)]
 
-    for i in range(dim):
-        x.append(0)
-        for j in range(dim):
-            for k in range(3):
-                x[i] += ys[k][i][j]
+    for k in range(3):
+        for i in range(dim):
+            for j in range(dim):
+                    x[i] += ys[k][i][j]
     return x
         
 def X(z,i):
@@ -110,10 +125,17 @@ def F(z,Es,T):
     '''E consists of (h,J,K,L)'''
     dim = len(z)
     
+    # this method is actually awful, we want to calculate unique U's once, and then abuse transpose somehow
+    us = [[[None for _ in range(4)] for _ in range(4)] for _ in range(4)]
+    
     # ys matrix (done this way for x calculations)
     ys = [[None for _ in range(4)] for _ in range(4)]
     for i in range(4):
         for j in range(4):
+            #BAD!!!!
+            for k in range(4):
+                if (i!=j or j!=k or i!=k):
+                    us[i][j][k] = U(z,i,j,k)
             if (i<j):
                 ys[i][j] = Y(z,i,j) 
             elif (i>j):
@@ -139,17 +161,21 @@ def F(z,Es,T):
         for y in y_all:
             for i in range(dim):
                 for j in range(dim):
-                    Hy -= y[i][j]*J[i][j]
+                    Hy += y[i][j]*J[i][j]
         
-        #Triangle calculation (Hu) needs to occur
+        for u in us:
+            for i in range(dim):
+                for j in range(dim):
+                    for k in range(dim):
+                        Hu -= u[i][j][k]*K[i][j][k]
 
         for i in range(dim):
             for j in range(dim):
                 for k in range(dim):
                     for l in range(dim):
-                        Hz -= z[i][j][k][l]*L[i][j][k][l]
+                        Hz += z[i][j][k][l]*L[i][j][k][l]
 
-        return Hx/4-Hy/6-Hu-Hz
+        return Hx/4-Hy/6-Hu/4-Hz
 
     def S():
         Sxlx, Syly, Szlz = 0,0,0
@@ -171,9 +197,11 @@ def F(z,Es,T):
 
         return -Sxlx/4+2*Syly/4-Szlz
 
-    hamilton = H()
-    return hamilton
+    if T==0: return H()
+    return H()-T*S()
 
-# Arbitrary Test Case
-#z = [ [ [[1,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ]
+# Arbitrary Test Case/DEBUG
+#z = [ [ [[2,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ]
+#print(X(z,0))
+#F(z,None,0)
 #h = [0.5,0.5]

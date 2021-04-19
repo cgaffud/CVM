@@ -132,12 +132,11 @@ def F(z,Es,T):
     ys = [[None for _ in range(4)] for _ in range(4)]
     for i in range(4):
         for j in range(4):
-            #BAD!!!!
             for k in range(4):
-                if (i!=j or j!=k or i!=k):
+                if (i!=j and j!=k and i!=k):
                     us[i][j][k] = U(z,i,j,k)
             if (i<j):
-                ys[i][j] = Y(z,i,j) 
+                ys[i][j] = Y_ij([us[i][j][k] for k in range(4) if k != i and k != j])
             elif (i>j):
                 #This is correct but is it needed
                 ys[i][j] = transpose(ys[j][i])
@@ -147,7 +146,6 @@ def F(z,Es,T):
     y_all = [ys[0][1],ys[0][2],ys[0][3],ys[1][3],ys[2][1],ys[2][3]]
     # Compositionals (Technically faster because don't have to recompute Ys)
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
-    print(xs)
 
     def H():
         h,J,K,L = Es
@@ -201,7 +199,7 @@ def F(z,Es,T):
     return H()-T*S()
 
 # Arbitrary Test Case/DEBUG
-#z = [ [ [[2,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ]
+z = [ [ [[2,1],[1,3]],[[1,4],[5,1]] ],[ [[1,7],[1,-2]],[[1,9],[10,1]] ] ]
 #print(X(z,0))
-#F(z,None,0)
+F(z,None,0)
 #h = [0.5,0.5]

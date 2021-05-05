@@ -67,7 +67,7 @@ def Y_ij(us):
     
     y =  [[0 for _ in range(dim)] for _ in range(dim)]
 
-    for l in range(3):
+    for l in range(2):
         for i in range(dim):
             for j in range(dim):
                 y[0].append(0)
@@ -138,7 +138,6 @@ def F(z,Es,T):
             if (i<j):
                 ys[i][j] = Y_ij([us[i][j][k] for k in range(4) if k != i and k != j])
             elif (i>j):
-                #This is correct but is it needed
                 ys[i][j] = transpose(ys[j][i])
 
     # Nearest neighbor bonds
@@ -148,32 +147,15 @@ def F(z,Es,T):
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
 
     def H():
-        h,J,K,L = Es
+        h,J,K, = Es
         # will have multiplicity of 4
         Hx, Hy, Hu, Hz = 0,0,0,0
-
-        for x in xs:
-            for i in range(dim):
-                Hx += x[i]*h[i]
 
         for y in y_all:
             for i in range(dim):
                 for j in range(dim):
                     Hy += y[i][j]*J[i][j]
-        
-        for u in us:
-            for i in range(dim):
-                for j in range(dim):
-                    for k in range(dim):
-                        Hu -= u[i][j][k]*K[i][j][k]
-
-        for i in range(dim):
-            for j in range(dim):
-                for k in range(dim):
-                    for l in range(dim):
-                        Hz += z[i][j][k][l]*L[i][j][k][l]
-
-        return Hx/4-Hy/6-Hu/4-Hz
+        return -Hy/6
 
     def S():
         Sxlx, Syly, Szlz = 0,0,0
@@ -198,8 +180,23 @@ def F(z,Es,T):
     if T==0: return H()
     return H()-T*S()
 
+def normalize(ztil):
+    total = 0
+    dim = len(ztil[0])
+    for zi in ztil:
+        for zij in zi:
+            for zijk in zij:
+                for zijkl in zijk:  
+                    total += zijkl
+    return [[[[ztil[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
+
 # Arbitrary Test Case/DEBUG
-z = [ [ [[2,1],[1,3]],[[1,4],[5,1]] ],[ [[1,7],[1,-2]],[[1,9],[10,1]] ] ]
+#z = normalize([ [ [[1,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ])
+#print(z)
+#print(Y(z,0,1))
+
+#Es = ([0,0], [[1,-1],[-1,1]], [[[0 for _ in range(2)] for _ in range(2)] for _ in range(2)])
 #print(X(z,0))
-F(z,None,0)
+
+#print(F(z,Es,5))
 #h = [0.5,0.5]

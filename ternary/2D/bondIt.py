@@ -98,6 +98,7 @@ def F(E,y,T):
     if T==0: return H(E,y)
     return H(E,y)-T*S(y)
 
+
 #minimization
 def ytilde(ycur, Eb, T, m):
     rowsize = len(ycur[0])
@@ -172,6 +173,7 @@ def minimize(Eb=[[0,-1,-1],
     tp = np.linspace(Trang[0]+2*delta, Trang[1]-delta, samp-2)
     
     y=normalize(guess)
+    print(y)
 
     mY,mF,E,C=[],[],[],[]
     xAe, xBe, xCe =[],[],[]
@@ -392,13 +394,13 @@ def minimize_x(Eb=[[0,-1,-1],
         yGuess=[[25,212.5,212.5],
                [12.5,12.5,0],
                [12.5,0,12.5]],
-        xTarget=[0.5,0.4,0.1],
+        xTarget=[0.4,0.3,0.3],
         mGuess=[1.,0.6,0.5],
         debug=False):
 
     delta = (Trang[1]-Trang[0])/samp
-    temp = np.linspace(Trang[0]+delta, Trang[1], samp)
-    tp = np.linspace(Trang[0]+2*delta, Trang[1]-delta, samp-2)
+    temp = np.linspace(Trang[0]+2*delta, Trang[1], samp)
+    tp = np.linspace(Trang[0]+3*delta, Trang[1]-delta, samp-2)
     
     y=normalize(yGuess)
 
@@ -546,11 +548,11 @@ def phase_x(Eb=[[0,-1,-1],
         output.close()
      
     fig = plt.figure(constrained_layout=True)
-    fig.suptitle('Transition Temp v. composition & chem potential with relative xB='+str(xBCrel[0])+' and mC='+str(xBCrel[1]))
+    fig.suptitle('Transition Temp v. composition with relative xB='+str(xBCrel[0])+' and xC='+str(xBCrel[1]))
     
-    gs = fig.add_gridspec(3,2)
+    gs = fig.add_gridspec(1,1)
 
-    newplt = fig.add_subplot(gs[2,0])
+    newplt = fig.add_subplot(gs[0,0])
     newplt.plot(xs, Tc)
     newplt.set_xlabel('xA')
     newplt.set_ylabel('Transition Temperature')
@@ -583,4 +585,7 @@ def phase_x(Eb=[[0,-1,-1],
     print("Runtime: " + str(time.time()-startTime))
     plt.show()
 
-minimize()
+y = normalize([[1,1],[1,1]])
+Es = [[1,-1],[-1,1]]
+print(y)
+print(Xt(y))

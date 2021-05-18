@@ -149,16 +149,17 @@ def F(z,Es,T):
     # Compositionals (Technically faster because don't have to recompute Ys)
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
 
-    def H():
-        J = Es
+    def H(E):
         # will have multiplicity of 4
-        Hy = 0
+        H = 0
 
-        for y in y_all:
-            for i in range(dim):
-                for j in range(dim):
-                    Hy += y[i][j]*J[i][j]
-        return -Hy/6
+        for i in range(dim):
+            for j in range(dim):
+                for k in range(dim):
+                    for l in range(dim):
+                        Esum = 1/2(E[i][j] + E[j][k] + E[k][l] + E[i][l])
+                        H += Esum * z[i][j][k][l]
+        return H
 
     def S():
         Sxlx, Syly, Szlz = 0,0,0
@@ -219,7 +220,7 @@ def ztilde(zcur, Es, T):
 
     return [[[[zres[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
 
-def search_z(z, Eb, T, m, xTarget, counter, debug=False):
+def search_z(z, Eb, T, counter, debug=False):
     change = 1
     exited = False
     while change>Z_PRECISION:

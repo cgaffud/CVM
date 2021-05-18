@@ -6,6 +6,9 @@ import math
 import copy
 import time
 
+Z_PRECISION = 1e-15
+MAX_ITER    = 2048
+
 def xlx(x):
     if x<0: return 1
     if x==0: return 0
@@ -147,9 +150,9 @@ def F(z,Es,T):
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
 
     def H():
-        h,J,K, = Es
+        J = Es
         # will have multiplicity of 4
-        Hx, Hy, Hu, Hz = 0,0,0,0
+        Hy = 0
 
         for y in y_all:
             for i in range(dim):
@@ -189,6 +192,55 @@ def normalize(ztil):
                 for zijkl in zijk:  
                     total += zijkl
     return [[[[ztil[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
+
+def ztilde(zcur, Es, T):
+    dim = len(zcur[0])
+    zres = [[[[0 for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
+
+    total = 0
+    for i in range(dim):
+        x_i = X(zcur, 0)
+        for j in range(dim):
+            x_j = X(zcur,1)
+            y_ij = Y(zcur, 0, 1)
+            for k in range(dim):
+                x_k = X(zcur,2)
+                y_jk = Y(zcur,1,2)
+                for l in range(dim):
+                    x_l = X(zcur,3)
+                    y_kl = Y(zcur,2,3)
+                    y_li = Y(zcur,3,0)
+                    
+                    #This is so bad memory-wise
+                    Esum = 1/2(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
+                    res = math.exp(Esum/T) * (x_i*x_j*x_k*x_l)/((y_ij*y_jk*y_kl*y_li)**2)
+                    zres[i][j][k][l] = res
+                    total += res 
+
+    return [[[[zres[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
+
+def search_z(z, Eb, T, m, xTarget, counter, debug=False):
+    change = 1
+    exited = False
+    while change>Z_PRECISION:
+            zold=z
+            z=ztilde(zold, Eb, T)
+            counter-=1
+            if(counter<1):
+                if debug:
+                    print('  Max Iterations Reached')
+                exited = True
+                break
+
+            change=norm(diff(z,zold))
+    
+    if debug and (not exited):
+        print('    Iterations taken:'+str(MAX_ITER-counter))
+        
+    return z
+            
+               
+  
 
 # Arbitrary Test Case/DEBUG
 #z = normalize([ [ [[1,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ])

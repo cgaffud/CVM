@@ -170,7 +170,7 @@ def minimize(Eb=[[0,-1,-1],
         m=[1.,0.6,0.5]):
     delta = (Trang[1]-Trang[0])/samp
     temp = np.linspace(Trang[0]+delta, Trang[1], samp)
-    tp = np.linspace(Trang[0]+2*delta, Trang[1]-delta, samp-2)
+    tp = np.linspace(Trang[0]+delta, Trang[1], samp)
     
     y=normalize(guess)
     print(y)

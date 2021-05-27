@@ -149,7 +149,7 @@ def F(z,Es,T):
     # Compositionals (Technically faster because don't have to recompute Ys)
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
 
-    def H(E):
+    def H():
         # will have multiplicity of 4
         H = 0
 
@@ -157,7 +157,7 @@ def F(z,Es,T):
             for j in range(dim):
                 for k in range(dim):
                     for l in range(dim):
-                        Esum = 1/2(E[i][j] + E[j][k] + E[k][l] + E[i][l])
+                        Esum = 1/2(Es[i][j] + Es[j][k] + Es[k][l] + Es[i][l])
                         H += Esum * z[i][j][k][l]
         return H
 
@@ -214,7 +214,7 @@ def ztilde(zcur, Es, T):
                     
                     #This is so bad memory-wise
                     Esum = 1/2(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
-                    res = math.exp(Esum/T) * (x_i*x_j*x_k*x_l)/((y_ij*y_jk*y_kl*y_li)**2)
+                    res = math.exp(Esum/T) * (x_i*x_j*x_k*x_l)**(1/4)/((y_ij*y_jk*y_kl*y_li)**(1/2))
                     zres[i][j][k][l] = res
                     total += res 
 
@@ -240,7 +240,111 @@ def search_z(z, Eb, T, counter, debug=False):
         
     return z
             
-               
+def minimize(Eb=[[0,-1,-1],
+            [-1,0,0],
+            [-1,0,0]],
+        Trang=[0,5],
+        samp=200,
+        guess=None,
+        m=[1.,0.6,0.5]):
+    delta = (Trang[1]-Trang[0])/samp
+    temp = np.linspace(Trang[0]+delta, Trang[1], samp)
+    tp = np.linspace(Trang[0]+delta, Trang[1], samp)
+    
+    z=normalize(guess)
+
+    mF,E,C=[],[],[]
+    #xAe, xBe, xCe =[],[],[]
+    #xAo, xBo, xCo =[],[],[]
+    xAt, xBt, xCt =[],[],[]
+    for i in range(len(temp)):
+        print('Calculating T='+str(temp[i]))
+        T=temp[i]
+
+        z = search_z(z, Eb, T, MAX_ITER, True)
+        
+        #x=Xe(y)
+        #xAe.append(2*x[0])
+        #xBe.append(2*x[1])
+        #xCe.append(2*x[2])
+        
+        #x=Xo(y)
+        #xAo.append(2*x[0])
+        #xBo.append(2*x[1])
+        #xCo.append(2*x[2])
+        xs = [X(z,i) for i in range(4)]
+        x = [(xs[0][i]+xs[1][i]+xs[2][i] + xs[3][i])/4 for i in range(3)]
+        xAt.append(x[0])
+        xBt.append(x[1])
+        xCt.append(x[2])
+
+        mF.append(F(z,Eb,T))
+
+        if i>1:
+            #calculate E
+            dF=mF[i]-mF[i-2]
+            dF/=(delta*2)
+            E.append(mF[i-1]-temp[i-1]*dF)
+
+            #calculate C
+            ddF=mF[i]-2*mF[i-1]+mF[i-2]
+            ddF/=(delta**2)
+            C.append(-temp[i-1]*ddF)
+
+    fig = plt.figure(constrained_layout=True)
+    fig.suptitle('2D square lattice, bond approx, ternary composition')
+    
+    gs=fig.add_gridspec(3,2)
+    
+    ax=fig.add_subplot(gs[0,1])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xAt,label='At', alpha=0.6)
+    ax.plot(temp,xBt,label='Bt', alpha=0.6)
+    ax.plot(temp,xCt,label='Ct', alpha=0.6)
+    ax.legend()
+
+    ax=fig.add_subplot(gs[1,1])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Free Energy')
+    ax.plot(temp,mF)
+    
+    ax=fig.add_subplot(gs[2,0])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('E=F-T*dF/dT')
+    ax.set_ylim(-5,5)
+    ax.plot(tp, E)
+
+    ax=fig.add_subplot(gs[2,1])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('C=-T*d2F/dT2')
+    ax.set_ylim(-5,5)
+    ax.plot(tp, C)
+    
+    ax=fig.add_subplot(gs[:2,0])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xAe,label='Ae', alpha=0.6)
+    ax.plot(temp,xBe,label='Be', alpha=0.6)
+    ax.plot(temp,xCe,label='Ce', alpha=0.6)
+
+    ax.plot(temp,xAo,label='Ao', alpha=0.6)
+    ax.plot(temp,xBo,label='Bo', alpha=0.6)
+    ax.plot(temp,xCo,label='Co', alpha=0.6)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
+
+    #high temp slope should be ln(2)~0.693
+    slope = mF[samp-1]-mF[math.floor(samp*0.75)]
+    slope /= (temp[samp-1]-temp[math.floor(samp*0.75)])
+    print('High temp slope: '+str(slope))
+    #intercept should be ~0
+    intercept=mF[samp-1]-slope*temp[samp-1]
+    print('Intercept: ' + str(intercept))
+
+    plt.tight_layout(pad=0, w_pad=0, h_pad=0, rect=(0,0,0.95,0.9))
+    plt.show() 
   
 
 # Arbitrary Test Case/DEBUG

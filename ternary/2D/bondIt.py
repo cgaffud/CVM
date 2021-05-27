@@ -170,7 +170,7 @@ def minimize(Eb=[[0,-1,-1],
         m=[1.,0.6,0.5]):
     delta = (Trang[1]-Trang[0])/samp
     temp = np.linspace(Trang[0]+delta, Trang[1], samp)
-    tp = np.linspace(Trang[0]+delta, Trang[1], samp)
+    tp = np.linspace(Trang[0]+2*delta, Trang[1]-delta, samp-2)
     
     y=normalize(guess)
     print(y)
@@ -585,7 +585,10 @@ def phase_x(Eb=[[0,-1,-1],
     print("Runtime: " + str(time.time()-startTime))
     plt.show()
 
-y = normalize([[1,1],[1,1]])
-Es = [[1,-1],[-1,1]]
-print(y)
-print(Xt(y))
+#y = normalize([[1,1],[1,1]])
+#Es = [[1,-1],[-1,1]]
+#print(y)
+#print(Xt(y))
+print(Xt(normalize([[25,212.5,212.5],
+               [12.5,12.5,0],
+               [12.5,0,12.5]])))

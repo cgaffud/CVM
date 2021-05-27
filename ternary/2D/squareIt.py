@@ -195,26 +195,21 @@ def normalize(ztil):
     return [[[[ztil[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
 
 def ztilde(zcur, Es, T):
-    dim = len(zcur[0])
+    dim = len(zcur)
     zres = [[[[0 for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
+    x_i, x_j, x_k, x_l = X(zcur,0), X(zcur,1), X(zcur,2), X(zcur,3)
+    y_ij, y_jk, y_kl, y_li = Y(zcur,0,1), Y(zcur,1,2), Y(zcur,2,3), Y(zcur,3,0)
 
     total = 0
     for i in range(dim):
-        x_i = X(zcur, 0)
         for j in range(dim):
-            x_j = X(zcur,1)
-            y_ij = Y(zcur, 0, 1)
             for k in range(dim):
-                x_k = X(zcur,2)
-                y_jk = Y(zcur,1,2)
                 for l in range(dim):
-                    x_l = X(zcur,3)
-                    y_kl = Y(zcur,2,3)
-                    y_li = Y(zcur,3,0)
                     
                     #This is so bad memory-wise
-                    Esum = 1/2(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
-                    res = math.exp(Esum/T) * (x_i*x_j*x_k*x_l)**(1/4)/((y_ij*y_jk*y_kl*y_li)**(1/2))
+                    Esum = 1/2*(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
+                    denom = ((y_ij[i][j]*y_jk[j][k]*y_kl[k][l]*y_li[l][i])**(1/2))
+                    res =  math.exp(Esum/T) * (x_i[i]*x_j[j]*x_k[k]*x_l[l])**(1/4)/denom if (denom) else 0
                     zres[i][j][k][l] = res
                     total += res 
 
@@ -322,18 +317,18 @@ def minimize(Eb=[[0,-1,-1],
     ax.set_ylim(-5,5)
     ax.plot(tp, C)
     
-    ax=fig.add_subplot(gs[:2,0])
-    ax.set_xlabel('Temperature')
-    ax.set_ylabel('Composition')
-    ax.set_ylim(-0.05,1.05)
-    ax.plot(temp,xAe,label='Ae', alpha=0.6)
-    ax.plot(temp,xBe,label='Be', alpha=0.6)
-    ax.plot(temp,xCe,label='Ce', alpha=0.6)
+    #ax=fig.add_subplot(gs[:2,0])
+    #ax.set_xlabel('Temperature')
+    #ax.set_ylabel('Composition')
+    #ax.set_ylim(-0.05,1.05)
+    #ax.plot(temp,xAe,label='Ae', alpha=0.6)
+    #ax.plot(temp,xBe,label='Be', alpha=0.6)
+    #ax.plot(temp,xCe,label='Ce', alpha=0.6)
 
-    ax.plot(temp,xAo,label='Ao', alpha=0.6)
-    ax.plot(temp,xBo,label='Bo', alpha=0.6)
-    ax.plot(temp,xCo,label='Co', alpha=0.6)
-    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
+    #ax.plot(temp,xAo,label='Ao', alpha=0.6)
+    #ax.plot(temp,xBo,label='Bo', alpha=0.6)
+    #ax.plot(temp,xCo,label='Co', alpha=0.6)
+    #ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
 
     #high temp slope should be ln(2)~0.693
     slope = mF[samp-1]-mF[math.floor(samp*0.75)]
@@ -357,3 +352,15 @@ def minimize(Eb=[[0,-1,-1],
 
 #print(F(z,Es,5))
 #h = [0.5,0.5]
+
+#z = [[[[6.25,26.5625,26.5625], [26.5625,13.28125,0], [26.5625,0,13.28125]], [[26.5625,112.890625,112.890625], [13.28125,6.640625,0], [,,]], [[,,], [,,], [,,]]], 
+#, ,]
+
+ybase = [[25,212.5,212.5],
+               [12.5,12.5,0],
+               [12.5,0,12.5]]
+z = [[[[ ybase[i][j] * ybase[j][k] * ybase[k][l] * ybase[l][i] for l in range(3)] for k in range(3)] for j in range(3)] for i in range(3)]
+print(z)
+print(Y(normalize(z),0,1))
+
+minimize(guess=z)

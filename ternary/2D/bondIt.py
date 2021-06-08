@@ -79,6 +79,7 @@ def Xt(y):
 
 #thermodynamic functions
 def H(E,y):
+    print("H: "+str(z*dot(E,y)))
     return z*dot(E,y)
 
 def S(y):
@@ -91,7 +92,7 @@ def S(y):
     for yi in y:
         for yij in yi:
             Syly+=xlx(2*yij)
-
+    print("S: "+str((z-1)/2*Sxlx-z/2*Syly))
     return (z-1)/2*Sxlx-z/2*Syly
 
 def F(E,y,T):
@@ -589,6 +590,26 @@ def phase_x(Eb=[[0,-1,-1],
 #Es = [[1,-1],[-1,1]]
 #print(y)
 #print(Xt(y))
-print(Xt(normalize([[25,212.5,212.5],
+#print(Xt(normalize([[25,212.5,212.5],
+#               [12.5,12.5,0],
+#               [12.5,0,12.5]])))
+
+ynorm = normalize([[25,212.5,212.5],
                [12.5,12.5,0],
-               [12.5,0,12.5]])))
+               [12.5,0,12.5]])
+
+print("Normalized: "+str(ynorm))
+
+
+print(F([[0,-1,-1],
+            [-1,0,0],
+            [-1,0,0]], ynorm, 1))
+
+ynew, m = search_y(ynorm, [[0,-1,-1],
+            [-1,0,0],
+            [-1,0,0]], 1,
+            [1.,0.5,0.5],
+            None, MAX_ITER, debug=True)
+
+print("After one iteration: "+str(Xt(ynew)))
+minimize()

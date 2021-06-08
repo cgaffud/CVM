@@ -6,8 +6,22 @@ import math
 import copy
 import time
 
-Z_PRECISION = 1e-15
+Z_PRECISION = 1e-18
 MAX_ITER    = 2048
+
+#s is for species (i,j,k,l all are for lattice point consideration)
+C = [[[[[0  for i in range(3)] for j in range(3)] for l in range(3)] for k in range(3)] for s in range(3)]
+
+#Construction of C matrix
+for i in range(3):
+    for j in range(3):
+        for k in range(3):
+            for l in range(3):
+                for s in range(3):
+                    C[i][j][k][l][s] += 1 if (i==s) else 0
+                    C[i][j][k][l][s] += 1 if (j==s) else 0
+                    C[i][j][k][l][s] += 1 if (k==s) else 0
+                    C[i][j][k][l][s] += 1 if (l==s) else 0
 
 def xlx(x):
     if x<0: return 1
@@ -17,9 +31,11 @@ def xlx(x):
 def dot(M, N):
     total=0
     rowsize = len(M[0])
-    for i in range(len(M)):
+    for i in range(rowsize):
         for j in range(rowsize):
-            total+= M[i][j]*N[i][j]
+            for k in range(rowsize):
+                for l in range(rowsize):
+                    total+= M[i][j][k][l]*N[i][j][k][l]
     return total
 
 def norm(M):
@@ -35,11 +51,11 @@ def abstot(M):
 # These functions also require M to be a well-formed matrix (rowsize)
 def diff(M,N):
     rowsize = len(M[0])
-    return [[M[i][j] - N[i][j] for j in range(rowsize)] for i in range(len(M))]
+    return [[[[M[i][j][k][l] - N[i][j][k][l] for l in range(rowsize)] for k in range(rowsize)] for j in range(rowsize)] for i in range(len(M))]
 
 def add(M,N):
     rowsize = len(M[0])
-    return [[M[i][j] + N[i][j] for j in range(rowsize)] for i in range(len(M))]
+    return [[[[M[i][j][k][l] + N[i][j][k][l] for l in range(rowsize)] for k in range(rowsize)] for j in range(rowsize)] for i in range(len(M))]
 
 def transpose(M):
     return [list(row) for row in zip(*M)]
@@ -125,26 +141,19 @@ def X(z,i):
 
 
 def F(z,Es,T):
-    '''E consists of (h,J,K,L)'''
+    '''E consists of only nnbs (J)'''
     dim = len(z)
-    
-    # this method is actually awful, we want to calculate unique U's once, and then abuse transpose somehow
-    us = [[[None for _ in range(4)] for _ in range(4)] for _ in range(4)]
-    
     # ys matrix (done this way for x calculations)
     ys = [[None for _ in range(4)] for _ in range(4)]
     for i in range(4):
         for j in range(4):
-            for k in range(4):
-                if (i!=j and j!=k and i!=k):
-                    us[i][j][k] = U(z,i,j,k)
             if (i<j):
-                ys[i][j] = Y_ij([us[i][j][k] for k in range(4) if k != i and k != j])
+                ys[i][j] = Y(z,i,j)
             elif (i>j):
                 ys[i][j] = transpose(ys[j][i])
 
     # Nearest neighbor bonds
-    y_nearest = [ys[0][1],ys[0][3],ys[2][1],ys[2][3]]
+    y_nearest = [ys[0][1],ys[1][2],ys[2][1],ys[3][0]]
     y_all = [ys[0][1],ys[0][2],ys[0][3],ys[1][3],ys[2][1],ys[2][3]]
     # Compositionals (Technically faster because don't have to recompute Ys)
     xs = [X_i([ys[i][(i+j) % 4] for j in range(1,4)]) for i in range(4)]
@@ -157,8 +166,10 @@ def F(z,Es,T):
             for j in range(dim):
                 for k in range(dim):
                     for l in range(dim):
-                        Esum = 1/2(Es[i][j] + Es[j][k] + Es[k][l] + Es[i][l])
+                        Esum = 1/2*(Es[i][j] + Es[j][k] + Es[k][l] + Es[i][l])
                         H += Esum * z[i][j][k][l]
+
+        print("H: "+str(H))
         return H
 
     def S():
@@ -178,7 +189,8 @@ def F(z,Es,T):
                 for zijk in zij:
                     for zijkl in zijk:
                         Szlz += xlx(zijkl)
-
+        
+        print("S: "+str(-Sxlx/4+2*Syly/4-Szlz))
         return -Sxlx/4+2*Syly/4-Szlz
 
     if T==0: return H()
@@ -194,7 +206,7 @@ def normalize(ztil):
                     total += zijkl
     return [[[[ztil[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
 
-def ztilde(zcur, Es, T):
+def ztilde(zcur, Es, T, m):
     dim = len(zcur)
     zres = [[[[0 for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
     x_i, x_j, x_k, x_l = X(zcur,0), X(zcur,1), X(zcur,2), X(zcur,3)
@@ -208,28 +220,29 @@ def ztilde(zcur, Es, T):
                     
                     #This is so bad memory-wise
                     Esum = 1/2*(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
-                    denom = ((y_ij[i][j]*y_jk[j][k]*y_kl[k][l]*y_li[l][i])**(1/2))
-                    res =  math.exp(Esum/T) * (x_i[i]*x_j[j]*x_k[k]*x_l[l])**(1/4)/denom if (denom) else 0
-                    zres[i][j][k][l] = res
+                    res =  math.exp(-Esum/T) * ((y_ij[i][j]*y_jk[j][k]*y_kl[k][l]*y_li[l][i])**(1/2))/(x_i[i]*x_j[j]*x_k[k]*x_l[l])**(1/4)
+                    for s in range(dim):
+                        res *= math.exp(m[s]*C[i][j][k][l][s]/T)
+                        
+                    zres[i][j][k][l] = res 
                     total += res 
 
     return [[[[zres[i][j][k][l]/(3*total) for l in range(dim)] for k in range(dim)] for j in range(dim)] for i in range(dim)]
 
-def search_z(z, Eb, T, counter, debug=False):
+def search_z(z, Eb, T, m, counter, debug=False):
     change = 1
     exited = False
     while change>Z_PRECISION:
             zold=z
-            z=ztilde(zold, Eb, T)
+            z=ztilde(zold, Eb, T, m)
             counter-=1
             if(counter<1):
                 if debug:
                     print('  Max Iterations Reached')
                 exited = True
                 break
-
             change=norm(diff(z,zold))
-    
+    print("Change: " + str(change))
     if debug and (not exited):
         print('    Iterations taken:'+str(MAX_ITER-counter))
         
@@ -239,36 +252,40 @@ def minimize(Eb=[[0,-1,-1],
             [-1,0,0],
             [-1,0,0]],
         Trang=[0,5],
-        samp=200,
+        samp=50,
         guess=None,
         m=[1.,0.6,0.5]):
     delta = (Trang[1]-Trang[0])/samp
     temp = np.linspace(Trang[0]+delta, Trang[1], samp)
-    tp = np.linspace(Trang[0]+delta, Trang[1], samp)
+    tp = np.linspace(Trang[0]+2*delta, Trang[1]-delta, samp-2)
     
     z=normalize(guess)
 
     mF,E,C=[],[],[]
-    #xAe, xBe, xCe =[],[],[]
-    #xAo, xBo, xCo =[],[],[]
+    xAa, xBa, xCa =[],[],[]
+    xAb, xBb, xCb =[],[],[]
     xAt, xBt, xCt =[],[],[]
     for i in range(len(temp)):
         print('Calculating T='+str(temp[i]))
         T=temp[i]
 
-        z = search_z(z, Eb, T, MAX_ITER, True)
+        z = search_z(z, Eb, T, m, MAX_ITER, True)
         
-        #x=Xe(y)
-        #xAe.append(2*x[0])
-        #xBe.append(2*x[1])
-        #xCe.append(2*x[2])
         
         #x=Xo(y)
         #xAo.append(2*x[0])
         #xBo.append(2*x[1])
         #xCo.append(2*x[2])
         xs = [X(z,i) for i in range(4)]
-        x = [(xs[0][i]+xs[1][i]+xs[2][i] + xs[3][i])/4 for i in range(3)]
+        xAa.append(xs[0][0])
+        xBa.append(xs[0][1])
+        xCa.append(xs[0][2])
+
+        xAb.append(xs[1][0])
+        xBb.append(xs[1][1])
+        xCb.append(xs[1][2])
+
+        x = [(xs[0][i]+xs[1][i]+xs[2][i]+xs[3][i])/4 for i in range(3)]
         xAt.append(x[0])
         xBt.append(x[1])
         xCt.append(x[2])
@@ -317,18 +334,18 @@ def minimize(Eb=[[0,-1,-1],
     ax.set_ylim(-5,5)
     ax.plot(tp, C)
     
-    #ax=fig.add_subplot(gs[:2,0])
-    #ax.set_xlabel('Temperature')
-    #ax.set_ylabel('Composition')
-    #ax.set_ylim(-0.05,1.05)
-    #ax.plot(temp,xAe,label='Ae', alpha=0.6)
-    #ax.plot(temp,xBe,label='Be', alpha=0.6)
-    #ax.plot(temp,xCe,label='Ce', alpha=0.6)
+    ax=fig.add_subplot(gs[:2,0])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xAa,label='A_α', alpha=0.6)
+    ax.plot(temp,xBa,label='B_α', alpha=0.6)
+    ax.plot(temp,xCa,label='C_α', alpha=0.6)
 
-    #ax.plot(temp,xAo,label='Ao', alpha=0.6)
-    #ax.plot(temp,xBo,label='Bo', alpha=0.6)
-    #ax.plot(temp,xCo,label='Co', alpha=0.6)
-    #ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
+    ax.plot(temp,xAb,label='A_β', alpha=0.6)
+    ax.plot(temp,xBb,label='B_β', alpha=0.6)
+    ax.plot(temp,xCb,label='C_β', alpha=0.6)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
 
     #high temp slope should be ln(2)~0.693
     slope = mF[samp-1]-mF[math.floor(samp*0.75)]
@@ -343,24 +360,22 @@ def minimize(Eb=[[0,-1,-1],
   
 
 # Arbitrary Test Case/DEBUG
-#z = normalize([ [ [[1,1],[1,1]],[[1,1],[1,1]] ],[ [[1,1],[1,1]],[[1,1],[1,1]] ] ])
-#print(z)
-#print(Y(z,0,1))
-
-#Es = ([0,0], [[1,-1],[-1,1]], [[[0 for _ in range(2)] for _ in range(2)] for _ in range(2)])
-#print(X(z,0))
-
-#print(F(z,Es,5))
-#h = [0.5,0.5]
-
-#z = [[[[6.25,26.5625,26.5625], [26.5625,13.28125,0], [26.5625,0,13.28125]], [[26.5625,112.890625,112.890625], [13.28125,6.640625,0], [,,]], [[,,], [,,], [,,]]], 
-#, ,]
 
 ybase = [[25,212.5,212.5],
                [12.5,12.5,0],
                [12.5,0,12.5]]
-z = [[[[ ybase[i][j] * ybase[j][k] * ybase[k][l] * ybase[l][i] for l in range(3)] for k in range(3)] for j in range(3)] for i in range(3)]
-print(z)
-print(Y(normalize(z),0,1))
+z = [[[[ ybase[i][j] * ybase[j][k] * ybase[k][l] * ybase[l][i] if (i == k and j == l) else 0 for l in range(3)] for k in range(3)] for j in range(3)] for i in range(3)]
 
-minimize(guess=z)
+#znormal = normalize(z)
+#print(z)
+#print("Normalized: "+str(Y(normalize(z),0,1)))
+
+#print(F(znormal, [[0,-1,-1],
+#             [-1,0,0],
+#             [-1,0,0]], 1))
+# znew = search_z(znormal,[[0,-1,-1],
+#             [-1,0,0],
+#             [-1,0,0]],1,MAX_ITER,True)
+# print("After one iteration: "+str(X(znew,0)))
+
+minimize(guess = z)

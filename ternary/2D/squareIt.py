@@ -166,7 +166,7 @@ def F(z,Es,T):
             for j in range(dim):
                 for k in range(dim):
                     for l in range(dim):
-                        Esum = 1/2*(Es[i][j] + Es[j][k] + Es[k][l] + Es[i][l])
+                        Esum = 1/2*(Es[i][j] + Es[j][k] + Es[k][l] + Es[l][i])
                         H += Esum * z[i][j][k][l]
 
         print("H: "+str(H))
@@ -219,7 +219,7 @@ def ztilde(zcur, Es, T, m):
                 for l in range(dim):
                     
                     #This is so bad memory-wise
-                    Esum = 1/2*(Es[i][j]+Es[i][l]+Es[k][j]+Es[k][l])
+                    Esum = 1/2*(Es[i][j]+Es[j][k]+Es[k][l]+Es[l][i])
                     res =  math.exp(-Esum/T) * ((y_ij[i][j]*y_jk[j][k]*y_kl[k][l]*y_li[l][i])**(1/2))/(x_i[i]*x_j[j]*x_k[k]*x_l[l])**(1/4)
                     for s in range(dim):
                         res *= math.exp(m[s]*C[i][j][k][l][s]/T)
@@ -262,8 +262,7 @@ def minimize(Eb=[[0,-1,-1],
     z=normalize(guess)
 
     mF,E,C=[],[],[]
-    xAa, xBa, xCa =[],[],[]
-    xAb, xBb, xCb =[],[],[]
+    xA, xB, xC = ([[] for _ in range(4)] for _ in range(3))
     xAt, xBt, xCt =[],[],[]
     for i in range(len(temp)):
         print('Calculating T='+str(temp[i]))
@@ -271,20 +270,16 @@ def minimize(Eb=[[0,-1,-1],
 
         z = search_z(z, Eb, T, m, MAX_ITER, True)
         
-        
-        #x=Xo(y)
-        #xAo.append(2*x[0])
-        #xBo.append(2*x[1])
-        #xCo.append(2*x[2])
+        #Get all site compositions
         xs = [X(z,i) for i in range(4)]
-        xAa.append(xs[0][0])
-        xBa.append(xs[0][1])
-        xCa.append(xs[0][2])
 
-        xAb.append(xs[1][0])
-        xBb.append(xs[1][1])
-        xCb.append(xs[1][2])
+        #Extract out single site compositions
+        for j in range(4):
+            xA[j].append(xs[j][0])
+            xB[j].append(xs[j][1])
+            xC[j].append(xs[j][2])
 
+        #Get total compositions
         x = [(xs[0][i]+xs[1][i]+xs[2][i]+xs[3][i])/4 for i in range(3)]
         xAt.append(x[0])
         xBt.append(x[1])
@@ -304,11 +299,11 @@ def minimize(Eb=[[0,-1,-1],
             C.append(-temp[i-1]*ddF)
 
     fig = plt.figure(constrained_layout=True)
-    fig.suptitle('2D square lattice, bond approx, ternary composition')
+    fig.suptitle('2D square lattice, square approx, ternary composition')
     
-    gs=fig.add_gridspec(3,2)
+    gs=fig.add_gridspec(4,3)
     
-    ax=fig.add_subplot(gs[0,1])
+    ax=fig.add_subplot(gs[0,2])
     ax.set_xlabel('Temperature')
     ax.set_ylabel('Composition')
     ax.set_ylim(-0.05,1.05)
@@ -317,18 +312,18 @@ def minimize(Eb=[[0,-1,-1],
     ax.plot(temp,xCt,label='Ct', alpha=0.6)
     ax.legend()
 
-    ax=fig.add_subplot(gs[1,1])
+    ax=fig.add_subplot(gs[1,2])
     ax.set_xlabel('Temperature')
     ax.set_ylabel('Free Energy')
     ax.plot(temp,mF)
     
-    ax=fig.add_subplot(gs[2,0])
+    ax=fig.add_subplot(gs[3,2])
     ax.set_xlabel('Temperature')
     ax.set_ylabel('E=F-T*dF/dT')
     ax.set_ylim(-5,5)
     ax.plot(tp, E)
 
-    ax=fig.add_subplot(gs[2,1])
+    ax=fig.add_subplot(gs[2,2])
     ax.set_xlabel('Temperature')
     ax.set_ylabel('C=-T*d2F/dT2')
     ax.set_ylim(-5,5)
@@ -336,15 +331,38 @@ def minimize(Eb=[[0,-1,-1],
     
     ax=fig.add_subplot(gs[:2,0])
     ax.set_xlabel('Temperature')
-    ax.set_ylabel('Composition')
+    ax.set_ylabel('Composition on α')
     ax.set_ylim(-0.05,1.05)
-    ax.plot(temp,xAa,label='A_α', alpha=0.6)
-    ax.plot(temp,xBa,label='B_α', alpha=0.6)
-    ax.plot(temp,xCa,label='C_α', alpha=0.6)
+    ax.plot(temp,xA[0],label='A_α', alpha=0.6)
+    ax.plot(temp,xB[0],label='B_α', alpha=0.6)
+    ax.plot(temp,xC[0],label='C_α', alpha=0.6)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
 
-    ax.plot(temp,xAb,label='A_β', alpha=0.6)
-    ax.plot(temp,xBb,label='B_β', alpha=0.6)
-    ax.plot(temp,xCb,label='C_β', alpha=0.6)
+    ax=fig.add_subplot(gs[:2,1])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition on β')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xA[1],label='A_β', alpha=0.6)
+    ax.plot(temp,xB[1],label='B_β', alpha=0.6)
+    ax.plot(temp,xC[1],label='C_β', alpha=0.6)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
+
+    ax=fig.add_subplot(gs[2:,1])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition on γ')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xA[2],label='A_γ', alpha=0.6)
+    ax.plot(temp,xB[2],label='B_γ', alpha=0.6)
+    ax.plot(temp,xC[2],label='C_γ', alpha=0.6)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
+
+    ax=fig.add_subplot(gs[2:,0])
+    ax.set_xlabel('Temperature')
+    ax.set_ylabel('Composition on δ')
+    ax.set_ylim(-0.05,1.05)
+    ax.plot(temp,xA[3],label='A_δ', alpha=0.6)
+    ax.plot(temp,xB[3],label='B_δ', alpha=0.6)
+    ax.plot(temp,xC[3],label='C_δ', alpha=0.6)
     ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', borderaxespad=0.)
 
     #high temp slope should be ln(2)~0.693
@@ -366,16 +384,16 @@ ybase = [[25,212.5,212.5],
                [12.5,0,12.5]]
 z = [[[[ ybase[i][j] * ybase[j][k] * ybase[k][l] * ybase[l][i] if (i == k and j == l) else 0 for l in range(3)] for k in range(3)] for j in range(3)] for i in range(3)]
 
-#znormal = normalize(z)
-#print(z)
-#print("Normalized: "+str(Y(normalize(z),0,1)))
-
-#print(F(znormal, [[0,-1,-1],
-#             [-1,0,0],
-#             [-1,0,0]], 1))
-# znew = search_z(znormal,[[0,-1,-1],
-#             [-1,0,0],
-#             [-1,0,0]],1,MAX_ITER,True)
-# print("After one iteration: "+str(X(znew,0)))
-
 minimize(guess = z)
+znormal = normalize(z)
+print(z)
+print("Normalized: "+str(Y(normalize(z),0,1)))
+
+znew = search_z(znormal,[[0,-1,-1],
+            [-1,0,0],
+            [-1,0,0]],1, [1.,0.6,0.5],MAX_ITER,True)
+            
+print(F(znew, [[0,-1,-1],
+             [-1,0,0],
+             [-1,0,0]], 1))
+# print("After one iteration: "+str(X(znew,0)))

@@ -605,11 +605,11 @@ print(F([[0,-1,-1],
             [-1,0,0],
             [-1,0,0]], ynorm, 1))
 
-ynew, m = search_y(ynorm, [[0,-1,-1],
-            [-1,0,0],
-            [-1,0,0]], 1,
-            [1.,0.5,0.5],
-            None, MAX_ITER, debug=True)
+# ynew, m = search_y(ynorm, [[0,-1,-1],
+#             [-1,0,0],
+#             [-1,0,0]], 1,
+#             [1.,0.5,0.5],
+#             None, MAX_ITER, debug=True)
 
-print("After one iteration: "+str(Xt(ynew)))
-minimize()
+# print("After one iteration: "+str(Xt(ynew)))
+
